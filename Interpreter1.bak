@@ -190,7 +190,7 @@
 
 (define question-exp->false-exp
   (lambda (question-exp)
-    (car(cddr (cdddr question-exp)))))
+    (car(cdr(cddr (cddr question-exp))))))
 
 (define do-math->op
   (lambda (do-math-exp)
@@ -240,7 +240,7 @@
       ((eq? (car c0d3) 'test) (bool-exp (test-exp->op c0d3)
                                         (parse-expression (test-exp->left c0d3))
                                         (parse-expression (test-exp->right c0d3))))
-      ((eq? (car c0d3) 'ask-question) (if-exp(bool-exp(test-exp->op (parse-expression(question-exp->test-exp c0d3))) (parse-expression(test-exp->left (question-exp->test-exp c0d3))) (parse-expression(test-exp->right (question-exp->test-exp c0d3))))
+      ((eq? (car c0d3) 'ask-question) (if-exp(bool-exp(test-exp->op c0d3) (parse-expression(test-exp->left (question-exp->test-exp c0d3))) (parse-expression(test-exp->right (question-exp->test-exp c0d3))))
                                              (parse-expression(question-exp->true-exp c0d3))
                                              (parse-expression(question-exp->false-exp c0d3))))
       ((eq? (car c0d3) 'do-math) (math-exp (do-math->op c0d3)
@@ -272,10 +272,10 @@
       ((eq? op '!=) (not (= left right))))))
 
 (define run-bool
-  (lambda(bool if-exp)
+  (lambda (bool trueExp falseExp)
     (cond
-      ((eq? bool #t)(if-exp->true-exp if-exp))
-      ((eq? bool #f)(if-exp->false-exp if-exp)))))
+      ((eq? bool #t) trueExp)
+      ((eq? bool #f) falseExp))))
 
 (define apply-expression
   (lambda (lcexp env)
@@ -284,8 +284,10 @@
       ((var-exp? lcexp) (apply-env (var-exp->var-name lcexp) env))
       ((if-exp? lcexp) (let ((op (bool-exp->op(if-exp->bool-exp lcexp)))
                              (left (apply-expression(bool-exp->left(if-exp->bool-exp lcexp)) env))
-                             (right (apply-expression(bool-exp->right(if-exp->bool-exp lcexp)) env)))
-                         (apply-expression(run-bool(resolve-boolean op left right) lcexp)env)))
+                             (right (apply-expression(bool-exp->right(if-exp->bool-exp lcexp)) env))
+                             (trueExp (apply-expression (if-exp->true-exp lcexp) env))
+                             (falseExp (apply-expression (if-exp->false-exp lcexp) env)))
+                         (apply-expression(run-bool(resolve-boolean op left right) trueExp falseExp) env)))
       ((bool-exp? lcexp) (let ((op (bool-exp->op lcexp))
                                (left (apply-expression (bool-exp->left lcexp) env))
                                (right (apply-expression (bool-exp->right lcexp) env)))
@@ -307,7 +309,7 @@
     (apply-expression (parse-expression c0d3-src) env)))
 
 (define myC0d3 '(run (func gets (a) does (do-math + (get-value a) (literal 2))) with (literal 5)))
-(define c0d3-bool '(ask-question (test < (literal 5) (literal 3)) 'if-true-do-> (literal 1) 'if-false-do-> (literal 0)))
+(define c0d3-bool '(ask-question (test < (literal 5) (literal 7)) 'if-true-do-> (literal 1) 'if-false-do-> (literal 0)))
 (define env (extend-env* '(c d e) '(1 2 3) (empty-env)))
 (parse-expression c0d3-bool)
-(display(run-program c0d3-bool env))
+(run-program c0d3-bool env)
